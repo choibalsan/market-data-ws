@@ -4,19 +4,18 @@ import { connectBinanceSockets, disconnectBinanceSockets } from './websocket/bin
 import { registerWindow, unregisterWindow, getRegisteredWindows, updateWindowEntry } from './windowManager';
 import ActiveWindowModal from './components/ActiveWindowModal';
 import MarketSelector from './components/MarketSelector';
-import WindowLimitModal from './components/WindowLimitModal';
 
 const OrderBook = React.lazy(() => import('./components/OrderBook'));
 const TradesGrid = React.lazy(() => import('./components/TradesGrid'));
 
 const BROADCAST_CHANNEL_NAME = 'binance-app';
 
-const App: React.FC = () => {
+const App = () => {
   const selectedMarket = useMarketStore((state) => state.selectedMarket);
   const updatesPaused = useMarketStore((state) => state.updatesPaused);
   const setUpdatesPaused = useMarketStore((state) => state.setUpdatesPaused);
 
-  const [windowId, setWindowId] = useState<string>('');
+  const [windowId, setWindowId] = useState('');
   const [showActiveModal, setShowActiveModal] = useState(false);
   const [broadcastChannel, setBroadcastChannel] = useState<BroadcastChannel | null>(null);
 
@@ -59,7 +58,6 @@ const App: React.FC = () => {
     }
   }, [windowId]);
 
-  // Handler: Pause this window
   const handlePauseMe = () => {
     setUpdatesPaused(true);
     updateWindowEntry(windowId, { updatesPaused: true });
@@ -67,7 +65,6 @@ const App: React.FC = () => {
     setShowActiveModal(false);
   };
 
-  // Handler: Pause all other windows
   const handlePauseOthers = () => {
     const windows = getRegisteredWindows();
     windows.forEach((w) => {
@@ -90,35 +87,8 @@ const App: React.FC = () => {
     };
   }, [selectedMarket, updatesPaused]);
 
-  // Optional legacy modal if more than two windows are active
-  const [showWindowLimitModal, setShowWindowLimitModal] = useState(false);
-  useEffect(() => {
-    const onStorage = () => {
-      const activeWindows = getRegisteredWindows().filter((w) => !w.updatesPaused);
-      setShowWindowLimitModal(activeWindows.length > 2);
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
-
-  const handleStopOldest = () => {
-    const activeWindows = getRegisteredWindows().filter((w) => !w.updatesPaused);
-    if (activeWindows.length > 0) {
-      const oldest = activeWindows.reduce((prev, curr) => (prev.timestamp < curr.timestamp ? prev : curr));
-      if (oldest.id) {
-        broadcastChannel?.postMessage({ type: 'PAUSE_WINDOW', targetId: oldest.id });
-      }
-    }
-    setShowWindowLimitModal(false);
-  };
-
-  const handleCloseCurrent = () => {
-    window.close();
-  };
-
   return (
     <div className="app-container">
-      {/* Top Panel: Single line controls */}
       <header className="top-panel">
         <h1 className="app-title">Binance Market Data</h1>
         <MarketSelector />
@@ -139,7 +109,6 @@ const App: React.FC = () => {
         </button>
       </header>
 
-      {/* Main Content: Two-column layout */}
       <main className="main-content">
         <section className="orderbook-section">
           <Suspense fallback={<div>Loading Order Book...</div>}>
@@ -156,9 +125,6 @@ const App: React.FC = () => {
       {/* Modals */}
       {showActiveModal && (
         <ActiveWindowModal onPauseMe={handlePauseMe} onPauseOthers={handlePauseOthers} />
-      )}
-      {showWindowLimitModal && (
-        <WindowLimitModal onStopOldest={handleStopOldest} onCloseCurrent={handleCloseCurrent} />
       )}
     </div>
   );

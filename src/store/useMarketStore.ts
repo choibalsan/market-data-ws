@@ -23,7 +23,7 @@ export interface Trade {
   side: 'buy' | 'sell';
 }
 
-// Represents a trading pair from exchangeInfo
+// trading pair from exchangeInfo
 export interface MarketInfo {
   symbol: string;
   baseAsset: string;
@@ -34,27 +34,26 @@ interface MarketState {
   selectedMarket: string;
   orderBook: OrderBook;
   trades: Trade[];
-  markets: MarketInfo[];       // <--- array of objects now
+  markets: MarketInfo[];
   updatesPaused: boolean;
   tradeCounter: number;
   setMarket: (marketSymbol: string) => void;
   updateOrderBook: (orderBook: OrderBook) => void;
   addTrade: (trade: Omit<Trade, 'id'>) => void;
   resetData: () => void;
-  setMarkets: (markets: MarketInfo[]) => void; // updated signature
+  setMarkets: (markets: MarketInfo[]) => void;
   fetchMarkets: () => void;
   setUpdatesPaused: (paused: boolean) => void;
 }
 
-const LOCAL_STORAGE_KEY = 'binance-markets';
+const MARKETS_CACHE_KEY = 'binance-markets';
 
 export const useMarketStore = create(immer<MarketState>((set) => {
   // Initialize markets from localStorage if available
   let initialMarkets: MarketInfo[] = [];
   try {
-    const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const cached = localStorage.getItem(MARKETS_CACHE_KEY);
     if (cached) {
-      // parse an array of MarketInfo objects
       initialMarkets = JSON.parse(cached);
     }
   } catch (e) {
@@ -108,19 +107,17 @@ export const useMarketStore = create(immer<MarketState>((set) => {
       });
     },
 
-    // Now accepts an array of MarketInfo
     setMarkets: (markets: MarketInfo[]) => {
       set((state) => {
         state.markets = markets;
       });
     },
 
-    // Use baseAsset/quoteAsset from exchangeInfo
     fetchMarkets: () => {
       fetch('https://api.binance.com/api/v3/exchangeInfo')
         .then((res) => res.json())
         .then((data) => {
-          // data.symbols is an array of objects with symbol, baseAsset, quoteAsset, etc.
+          // data.symbols is an array trade pairs/markets with baseAsset, quoteAsset, etc.
           const filtered = data.symbols.filter((s: any) => s.status === 'TRADING');
           const marketInfos: MarketInfo[] = filtered.map((s: any) => ({
             symbol: s.symbol,
@@ -128,8 +125,8 @@ export const useMarketStore = create(immer<MarketState>((set) => {
             quoteAsset: s.quoteAsset,
           }));
 
-          // cache in localStorage
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(marketInfos));
+          // cache in localStorage, 
+          localStorage.setItem(MARKETS_CACHE_KEY, JSON.stringify(marketInfos));
           set((state) => {
             state.markets = marketInfos;
           });

@@ -1,11 +1,9 @@
-import React from 'react';
-
 interface ActiveWindowModalProps {
   onPauseMe: () => void;
   onPauseOthers: () => void;
 }
 
-const ActiveWindowModal: React.FC<ActiveWindowModalProps> = ({ onPauseMe, onPauseOthers }) => {
+const ActiveWindowModal = ({ onPauseMe, onPauseOthers }: ActiveWindowModalProps) => {
   return (
     <div
       style={{
@@ -15,7 +13,7 @@ const ActiveWindowModal: React.FC<ActiveWindowModalProps> = ({ onPauseMe, onPaus
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 9999,
+        zIndex: 2,
       }}
     >
       <div style={{ background: '#fff', padding: '2rem', borderRadius: '8px', textAlign: 'center' }}>

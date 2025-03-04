@@ -4,6 +4,7 @@ import { Trade, useMarketStore } from '../store/useMarketStore';
 let orderBookSocket: ReconnectingWebSocket | null = null;
 let tradesSocket: ReconnectingWebSocket | null = null;
 
+const DEPTH = 20;
 const options = {
   connectionTimeout: 4000,
   maxRetries: Infinity,
@@ -50,7 +51,7 @@ export function connectBinanceSockets(market: string) {
   if (tradesSocket) tradesSocket.close();
 
   const lowerMarket = market.toLowerCase();
-  const orderBookUrl = `wss://stream.binance.com:9443/ws/${lowerMarket}@depth20@100ms`;
+  const orderBookUrl = `wss://stream.binance.com:9443/ws/${lowerMarket}@depth${DEPTH}@100ms`;
   const tradesUrl = `wss://stream.binance.com:9443/ws/${lowerMarket}@trade`;
 
   orderBookSocket = new ReconnectingWebSocket(orderBookUrl, [], options);

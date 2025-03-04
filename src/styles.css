@@ -1,4 +1,4 @@
-/* Global resets and base styles */
+/* Global Resets and Base Styles */
 body, html, #root {
     margin: 0;
     padding: 0;
@@ -6,14 +6,13 @@ body, html, #root {
     font-family: Arial, sans-serif;
   }
   
-  /* App Container */
   .app-container {
     display: flex;
     flex-direction: column;
     height: 100vh;
   }
   
-  /* Top Panel */
+  /* Top */
   .top-panel {
     display: flex;
     align-items: center;
@@ -30,7 +29,7 @@ body, html, #root {
     cursor: pointer;
   }
   
-  /* Main Content: Two-Column Layout */
+  /* Main layout */
   .main-content {
     display: flex;
     flex: 1;
@@ -46,7 +45,7 @@ body, html, #root {
     border-right: 1px solid #ccc;
   }
   
-  /* Order Book Styles */
+  /* Order Book */
   .orderbook-container {
     display: flex;
     justify-content: space-between;
@@ -84,15 +83,6 @@ body, html, #root {
     position: relative;
     z-index: 1;
   }
-  .highlight-ask {
-    background-color: rgba(255, 0, 0, 0.3);
-  }
-  .highlight-bid {
-    background-color: rgba(0, 255, 0, 0.3);
-  }
-  .large-order {
-    font-weight: bold;
-  }
   .spread-container {
     width: 150px;
     text-align: center;
@@ -110,10 +100,10 @@ body, html, #root {
   
   /* Trades Styles */
   .trades-container {
-    font-family: monospace;
-    font-size: 0.9rem;
     height: 100%;
     overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.9rem;
   }
   .trades-title {
     text-align: center;
@@ -137,25 +127,27 @@ body, html, #root {
     border-bottom: 2px solid #ccc;
   }
   .trade-col {
-    flex-basis: 20%;
-    text-align: center;
+    flex: 1;
   }
-  .time-col {
+  .trade-col.time {
     text-align: left;
   }
-  .price-col,
-  .amount-col {
+  .trade-col.price,
+  .trade-col.amount {
     text-align: right;
   }
+  .trade-col.direction {
+    text-align: center;
+  }
   
-  /* Modal Styles */
+  /* Modal */
   .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0,0,0,0.4);
+    background-color: rgba(0, 0, 0, 0.4);
     display: flex;
     justify-content: center;
     align-items: center;
