@@ -1,168 +1,134 @@
-import React from 'react';
-import { useMarketStore } from '../store/useMarketStore';
+import React, { memo, useEffect, useRef, useState } from 'react';
+import { useMarketStore, OrderBookLevel } from '../store/useMarketStore';
 
-export interface OrderBookLevel {
-  price: number;
-  volume: number;
+interface OrderBookRowProps {
+  level: OrderBookLevel;
+  barWidth: number;
+  side: 'ask' | 'bid';
+  highlight: boolean;
 }
+
+const OrderBookRow: React.FC<OrderBookRowProps> = memo(
+  ({ level, barWidth, side, highlight }) => {
+    const volumeBarStyle = {
+      width: `${barWidth}%`,
+      backgroundColor: side === 'ask' ? 'rgba(255,0,0,0.2)' : 'rgba(0,255,0,0.2)'
+    };
+
+    // Apply highlight CSS class if applicable
+    const rowClass = `orderbook-row ${highlight ? (side === 'ask' ? 'highlight-ask' : 'highlight-bid') : ''}`;
+
+    return (
+      <div className={rowClass}>
+        <div className="volume-bar" style={volumeBarStyle}></div>
+        <div className="order-price">{level.price}</div>
+        <div className="order-volume">{level.volume}</div>
+      </div>
+    );
+  },
+  (prevProps, nextProps) =>
+    prevProps.level.priceParsed === nextProps.level.priceParsed &&
+    prevProps.level.volumeParsed === nextProps.level.volumeParsed &&
+    prevProps.barWidth === nextProps.barWidth &&
+    prevProps.highlight === nextProps.highlight
+);
 
 const OrderBook: React.FC = () => {
   const { orderBook } = useMarketStore();
 
-  // Local state to track highlights: keys like "ask-<price>" or "bid-<price>"
-  const [highlights, setHighlights] = React.useState<{ [key: string]: 'bid' | 'ask' }>({});
-  const prevOrderBook = React.useRef(orderBook);
+  // We'll compute highlights based on a 5% change threshold
+  const [highlights, setHighlights] = useState<{ [key: string]: boolean }>({});
+  const prevOrderBook = useRef(orderBook);
 
-  // Compare new order book to previous one to detect changes.
-  React.useEffect(() => {
-    const newHighlights: { [key: string]: 'bid' | 'ask' } = {};
+  useEffect(() => {
+    const newHighlights: { [key: string]: boolean } = {};
 
-    // Process ASKS (sell orders)
-    const currentAsks = orderBook.asks.slice(0, 15);
-    const prevAsks = prevOrderBook.current.asks.slice(0, 15);
-    currentAsks.forEach((level) => {
+    // Check asks for changes
+    orderBook.asks.forEach((level) => {
       const key = `ask-${level.price}`;
-      const prevLevel = prevAsks.find((l) => Math.abs(l.price - level.price) < 1e-8);
-      if (!prevLevel || prevLevel.volume !== level.volume) {
-        newHighlights[key] = 'ask';
+      const prevLevel = prevOrderBook.current.asks.find(
+        (l) => Math.abs(l.priceParsed - level.priceParsed) < 1e-8
+      );
+      if (!prevLevel) {
+        // New level, always highlight
+        newHighlights[key] = true;
+      } else {
+        const change = Math.abs(level.volumeParsed - prevLevel.volumeParsed) / (prevLevel.volumeParsed || 1);
+        if (change > 0.05) {
+          newHighlights[key] = true;
+        }
       }
     });
 
-    // Process BIDS (buy orders)
-    const currentBids = orderBook.bids.slice(0, 15);
-    const prevBids = prevOrderBook.current.bids.slice(0, 15);
-    currentBids.forEach((level) => {
+    // Check bids for changes
+    orderBook.bids.forEach((level) => {
       const key = `bid-${level.price}`;
-      const prevLevel = prevBids.find((l) => Math.abs(l.price - level.price) < 1e-8);
-      if (!prevLevel || prevLevel.volume !== level.volume) {
-        newHighlights[key] = 'bid';
+      const prevLevel = prevOrderBook.current.bids.find(
+        (l) => Math.abs(l.priceParsed - level.priceParsed) < 1e-8
+      );
+      if (!prevLevel) {
+        newHighlights[key] = true;
+      } else {
+        const change = Math.abs(level.volumeParsed - prevLevel.volumeParsed) / (prevLevel.volumeParsed || 1);
+        if (change > 0.05) {
+          newHighlights[key] = true;
+        }
       }
     });
 
-    if (Object.keys(newHighlights).length > 0) {
-      setHighlights(newHighlights);
-      // Clear highlights after 1 second.
-      setTimeout(() => setHighlights({}), 1000);
-    }
+    setHighlights(newHighlights);
     prevOrderBook.current = orderBook;
   }, [orderBook]);
 
-  // Get visible levels (limit to 15)
-  // For ASKS: sort descending (highest price first)
-  const visibleAsks = [...orderBook.asks].slice(0, 15).sort((a, b) => b.price - a.price);
-  // For BIDS: sort ascending (lowest price first)
-  const visibleBids = [...orderBook.bids].slice(0, 15).sort((a, b) => a.price - b.price);
+  // Sort asks descending (highest price first) and bids ascending (lowest price first)
+  const sortedAsks = [...orderBook.asks].sort((a, b) => b.priceParsed - a.priceParsed);
+  const sortedBids = [...orderBook.bids].sort((a, b) => a.priceParsed - b.priceParsed);
 
-  // Calculate totals for bolding large orders.
-  const totalAskVolume = visibleAsks.reduce((sum, level) => sum + level.volume, 0);
-  const totalBidVolume = visibleBids.reduce((sum, level) => sum + level.volume, 0);
-  // Calculate maximum volume among levels (for volume bars).
-  const maxAskVolume = Math.max(...visibleAsks.map((l) => l.volume), 1);
-  const maxBidVolume = Math.max(...visibleBids.map((l) => l.volume), 1);
+  const maxAskVolume = Math.max(...sortedAsks.map((l) => l.volumeParsed), 1);
+  const maxBidVolume = Math.max(...sortedBids.map((l) => l.volumeParsed), 1);
 
-  // Determine best bid and best ask to compute spread and midpoint.
-  const bestBid = visibleBids.length ? visibleBids[visibleBids.length - 1] : null;
-  const bestAsk = visibleAsks.length ? visibleAsks[visibleAsks.length - 1] : null;
-  const spread = bestBid && bestAsk ? bestAsk.price - bestBid.price : null;
-  const midpoint = bestBid && bestAsk ? (bestBid.price + bestAsk.price) / 2 : null;
+  const bestBid = sortedBids.length ? sortedBids[sortedBids.length - 1] : null;
+  const bestAsk = sortedAsks.length ? sortedAsks[sortedAsks.length - 1] : null;
+  const spread = bestBid && bestAsk ? bestAsk.priceParsed - bestBid.priceParsed : null;
+  const midpoint = bestBid && bestAsk ? (bestBid.priceParsed + bestAsk.priceParsed) / 2 : null;
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
+    <div className="orderbook-container">
       {/* Sell Orders (Asks) */}
-      <div style={{ flex: 1, marginRight: '0.5rem' }}>
-        <h2 style={{ color: 'red' }}>Sell Orders (ASKS)</h2>
-        {visibleAsks.map((level) => {
+      <div className="orderbook-side">
+        <h2 className="orderbook-title asks-title">Sell Orders (ASKS)</h2>
+        {sortedAsks.map((level) => {
+          const barWidth = (level.volumeParsed / maxAskVolume) * 100;
           const key = `ask-${level.price}`;
-          const highlight = highlights[key];
-          // Bold if volume exceeds 1% of total ask volume.
-          const isLarge = level.volume > 0.01 * totalAskVolume;
-          // Compute bar width percentage relative to maximum ask volume.
-          const barWidth = (level.volume / maxAskVolume) * 100;
+          const highlight = !!highlights[key];
           return (
-            <div
-              key={key}
-              style={{
-                position: 'relative',
-                padding: '4px 8px',
-                marginBottom: '2px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                backgroundColor: highlight ? 'rgba(255,0,0,0.3)' : 'transparent',
-                fontWeight: isLarge ? 'bold' : 'normal',
-              }}
-            >
-              {/* Volume Bar (absolute background) */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  height: '100%',
-                  width: `${barWidth}%`,
-                  backgroundColor: 'rgba(255,0,0,0.2)',
-                  zIndex: 0,
-                }}
-              />
-              <div style={{ zIndex: 1 }}>{level.price.toFixed(4)}</div>
-              <div style={{ zIndex: 1 }}>{level.volume.toFixed(2)}</div>
-            </div>
+            <OrderBookRow key={key} level={level} barWidth={barWidth} side="ask" highlight={highlight} />
           );
         })}
       </div>
 
-      {/* Center Spread Display */}
-      <div style={{ width: '150px', textAlign: 'center' }}>
+      {/* Center Spread */}
+      <div className="spread-container">
         {midpoint !== null && (
-          <div
-            style={{
-              padding: '8px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              background: '#f0f0f0',
-            }}
-          >
+          <div className="spread-box">
             <div>Midpoint</div>
-            <div style={{ fontWeight: 'bold' }}>{midpoint.toFixed(4)}</div>
-            {spread !== null && <div>Spread: {spread.toFixed(4)}</div>}
+            {/* Format midpoint to 8 decimal places */}
+            <div className="spread-value">{midpoint.toFixed(8)}</div>
+            {/* Format spread to 8 decimal places if it exists */}
+            {spread !== null && <div>Spread: {spread.toFixed(8)}</div>}
           </div>
         )}
       </div>
 
       {/* Buy Orders (Bids) */}
-      <div style={{ flex: 1, marginLeft: '0.5rem' }}>
-        <h2 style={{ color: 'green' }}>Buy Orders (BIDS)</h2>
-        {visibleBids.map((level) => {
+      <div className="orderbook-side">
+        <h2 className="orderbook-title bids-title">Buy Orders (BIDS)</h2>
+        {sortedBids.map((level) => {
+          const barWidth = (level.volumeParsed / maxBidVolume) * 100;
           const key = `bid-${level.price}`;
-          const highlight = highlights[key];
-          const isLarge = level.volume > 0.01 * totalBidVolume;
-          const barWidth = (level.volume / maxBidVolume) * 100;
+          const highlight = !!highlights[key];
           return (
-            <div
-              key={key}
-              style={{
-                position: 'relative',
-                padding: '4px 8px',
-                marginBottom: '2px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                backgroundColor: highlight ? 'rgba(0,255,0,0.3)' : 'transparent',
-                fontWeight: isLarge ? 'bold' : 'normal',
-              }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  height: '100%',
-                  width: `${barWidth}%`,
-                  backgroundColor: 'rgba(0,255,0,0.2)',
-                  zIndex: 0,
-                }}
-              />
-              <div style={{ zIndex: 1 }}>{level.price.toFixed(4)}</div>
-              <div style={{ zIndex: 1 }}>{level.volume.toFixed(2)}</div>
-            </div>
+            <OrderBookRow key={key} level={level} barWidth={barWidth} side="bid" highlight={highlight} />
           );
         })}
       </div>

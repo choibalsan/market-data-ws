@@ -1,0 +1,180 @@
+/* Global resets and base styles */
+body, html, #root {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: Arial, sans-serif;
+  }
+  
+  /* App Container */
+  .app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  
+  /* Top Panel */
+  .top-panel {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: #f5f5f5;
+  }
+  .app-title {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+  .pause-btn {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+  }
+  
+  /* Main Content: Two-Column Layout */
+  .main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  .orderbook-section,
+  .trades-section {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+  .orderbook-section {
+    border-right: 1px solid #ccc;
+  }
+  
+  /* Order Book Styles */
+  .orderbook-container {
+    display: flex;
+    justify-content: space-between;
+  }
+  .orderbook-side {
+    flex: 1;
+  }
+  .orderbook-title {
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+  }
+  .asks-title {
+    color: red;
+  }
+  .bids-title {
+    color: green;
+  }
+  .orderbook-row {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 8px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid #ddd;
+  }
+  .volume-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 0;
+  }
+  .order-price,
+  .order-volume {
+    position: relative;
+    z-index: 1;
+  }
+  .highlight-ask {
+    background-color: rgba(255, 0, 0, 0.3);
+  }
+  .highlight-bid {
+    background-color: rgba(0, 255, 0, 0.3);
+  }
+  .large-order {
+    font-weight: bold;
+  }
+  .spread-container {
+    width: 150px;
+    text-align: center;
+    align-self: center;
+  }
+  .spread-box {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f0f0f0;
+  }
+  .spread-value {
+    font-weight: bold;
+  }
+  
+  /* Trades Styles */
+  .trades-container {
+    font-family: monospace;
+    font-size: 0.9rem;
+    height: 100%;
+    overflow-y: auto;
+  }
+  .trades-title {
+    text-align: center;
+    margin: 0.5rem 0;
+  }
+  .placeholder {
+    text-align: center;
+    padding: 1rem;
+    color: #888;
+  }
+  .trades-header,
+  .trade-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    border-bottom: 1px solid #eee;
+  }
+  .trades-header {
+    font-weight: bold;
+    border-bottom: 2px solid #ccc;
+  }
+  .trade-col {
+    flex-basis: 20%;
+    text-align: center;
+  }
+  .time-col {
+    text-align: left;
+  }
+  .price-col,
+  .amount-col {
+    text-align: right;
+  }
+  
+  /* Modal Styles */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+  .modal-content {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    text-align: center;
+  }
+  .modal-actions {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+  }
+  .modal-actions button {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+  }
+  

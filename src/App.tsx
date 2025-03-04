@@ -1,16 +1,10 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useMarketStore } from './store/useMarketStore';
 import { connectBinanceSockets, disconnectBinanceSockets } from './websocket/binanceWs';
-import {
-  registerWindow,
-  unregisterWindow,
-  getRegisteredWindows,
-  updateWindowEntry,
-} from './windowManager';
-
+import { registerWindow, unregisterWindow, getRegisteredWindows, updateWindowEntry } from './windowManager';
 import ActiveWindowModal from './components/ActiveWindowModal';
 import MarketSelector from './components/MarketSelector';
-import WindowLimitModal from './components/WindowLimitModal'; // if you still want to keep the old limit logic
+import WindowLimitModal from './components/WindowLimitModal';
 
 const OrderBook = React.lazy(() => import('./components/OrderBook'));
 const TradesGrid = React.lazy(() => import('./components/TradesGrid'));
@@ -26,57 +20,46 @@ const App: React.FC = () => {
   const [showActiveModal, setShowActiveModal] = useState(false);
   const [broadcastChannel, setBroadcastChannel] = useState<BroadcastChannel | null>(null);
 
-  // For any older "2+ windows" logic:
-  const [showWindowLimitModal, setShowWindowLimitModal] = useState(false);
-
+  // Register window on mount and clean up on unload
   useEffect(() => {
-    // Create an ID for this window
     const id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
     setWindowId(id);
-
-    // Register as unpaused by default (active).
     registerWindow(id);
 
-    // Create a broadcast channel
     const bc = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
     setBroadcastChannel(bc);
 
     bc.onmessage = (event) => {
       if (!event.data) return;
-
-      // If we receive a "PAUSE_WINDOW" message and we are the target, pause ourselves
       if (event.data.type === 'PAUSE_WINDOW' && event.data.targetId === id) {
-        // Pause this window
         setUpdatesPaused(true);
         updateWindowEntry(id, { updatesPaused: true });
         disconnectBinanceSockets();
       }
     };
 
-    // Remove ourselves on unload
     const cleanup = () => {
       unregisterWindow(id);
       bc.close();
     };
     window.addEventListener('beforeunload', cleanup);
-
     return () => {
       cleanup();
       window.removeEventListener('beforeunload', cleanup);
     };
   }, [setUpdatesPaused]);
 
-  // After registering, check if more than one window is unpaused
+  // Check for multiple active windows and show modal if needed
   useEffect(() => {
+    if (!windowId) return;
     const windows = getRegisteredWindows();
     const activeWindows = windows.filter((w) => w.updatesPaused === false);
-    // If more than 1 active window, show the modal in the new window
-    if (windowId && activeWindows.length > 1) {
+    if (activeWindows.length > 1) {
       setShowActiveModal(true);
     }
   }, [windowId]);
 
-  // "Pause Me" => set updatesPaused for this window
+  // Handler: Pause this window
   const handlePauseMe = () => {
     setUpdatesPaused(true);
     updateWindowEntry(windowId, { updatesPaused: true });
@@ -84,7 +67,7 @@ const App: React.FC = () => {
     setShowActiveModal(false);
   };
 
-  // "Pause Others" => broadcast a message to all other windows to pause
+  // Handler: Pause all other windows
   const handlePauseOthers = () => {
     const windows = getRegisteredWindows();
     windows.forEach((w) => {
@@ -92,41 +75,36 @@ const App: React.FC = () => {
         broadcastChannel?.postMessage({ type: 'PAUSE_WINDOW', targetId: w.id });
       }
     });
-    // The current window remains unpaused
     setShowActiveModal(false);
   };
 
-  // Connect websockets for the selected market if we are not paused
+  // Connect websockets if not paused
   useEffect(() => {
     if (!updatesPaused) {
       connectBinanceSockets(selectedMarket);
+    } else {
+      disconnectBinanceSockets();
     }
     return () => {
       disconnectBinanceSockets();
     };
   }, [selectedMarket, updatesPaused]);
 
-  // Optional old logic: if you still have the "2+ windows" limit
-  // you can keep or remove this
+  // Optional legacy modal if more than two windows are active
+  const [showWindowLimitModal, setShowWindowLimitModal] = useState(false);
   useEffect(() => {
     const onStorage = () => {
       const activeWindows = getRegisteredWindows().filter((w) => !w.updatesPaused);
-      // Example of old logic for more than 2 windows
       setShowWindowLimitModal(activeWindows.length > 2);
     };
     window.addEventListener('storage', onStorage);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-    };
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Example of old limit logic handlers
   const handleStopOldest = () => {
     const activeWindows = getRegisteredWindows().filter((w) => !w.updatesPaused);
     if (activeWindows.length > 0) {
-      const oldest = activeWindows.reduce((prev, curr) =>
-        prev.timestamp < curr.timestamp ? prev : curr
-      );
+      const oldest = activeWindows.reduce((prev, curr) => (prev.timestamp < curr.timestamp ? prev : curr));
       if (oldest.id) {
         broadcastChannel?.postMessage({ type: 'PAUSE_WINDOW', targetId: oldest.id });
       }
@@ -139,13 +117,14 @@ const App: React.FC = () => {
   };
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Top panel */}
-      <div style={{ flex: '0 0 auto', padding: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <h1 style={{ margin: 0 }}>Binance Market Data</h1>
-          <MarketSelector />
-          <button onClick={() => {
+    <div className="app-container">
+      {/* Top Panel: Single line controls */}
+      <header className="top-panel">
+        <h1 className="app-title">Binance Market Data</h1>
+        <MarketSelector />
+        <button
+          className="pause-btn"
+          onClick={() => {
             const newPaused = !updatesPaused;
             setUpdatesPaused(newPaused);
             updateWindowEntry(windowId, { updatesPaused: newPaused });
@@ -154,42 +133,32 @@ const App: React.FC = () => {
             } else {
               connectBinanceSockets(selectedMarket);
             }
-          }}>
-            {updatesPaused ? 'Resume Updates' : 'Pause Updates'}
-          </button>
-        </div>
-      </div>
+          }}
+        >
+          {updatesPaused ? 'Resume Updates' : 'Pause Updates'}
+        </button>
+      </header>
 
-      {/* Main content: two-column layout */}
-      <div style={{ flex: '1 1 auto', display: 'flex', overflow: 'hidden' }}>
-        {/* Order Book */}
-        <div style={{ flex: 1, overflowY: 'auto', borderRight: '1px solid #ccc', padding: '1rem' }}>
+      {/* Main Content: Two-column layout */}
+      <main className="main-content">
+        <section className="orderbook-section">
           <Suspense fallback={<div>Loading Order Book...</div>}>
             <OrderBook />
           </Suspense>
-        </div>
-        {/* Trades */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+        </section>
+        <section className="trades-section">
           <Suspense fallback={<div>Loading Trades...</div>}>
             <TradesGrid />
           </Suspense>
-        </div>
-      </div>
+        </section>
+      </main>
 
-      {/* Show the "pause me or pause others" modal if there's another active window */}
+      {/* Modals */}
       {showActiveModal && (
-        <ActiveWindowModal
-          onPauseMe={handlePauseMe}
-          onPauseOthers={handlePauseOthers}
-        />
+        <ActiveWindowModal onPauseMe={handlePauseMe} onPauseOthers={handlePauseOthers} />
       )}
-
-      {/* Optional old limit modal */}
       {showWindowLimitModal && (
-        <WindowLimitModal
-          onStopOldest={handleStopOldest}
-          onCloseCurrent={handleCloseCurrent}
-        />
+        <WindowLimitModal onStopOldest={handleStopOldest} onCloseCurrent={handleCloseCurrent} />
       )}
     </div>
   );

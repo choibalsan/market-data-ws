@@ -2,8 +2,10 @@ import create from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
 export interface OrderBookLevel {
-  price: number;
-  volume: number;
+  price: string;
+  priceParsed: number;
+  volume: string;
+  volumeParsed: number;
 }
 
 export interface OrderBook {
@@ -13,24 +15,33 @@ export interface OrderBook {
 
 export interface Trade {
   id?: string;
-  price: number;
-  quantity: number;
+  price: string;
+  priceParsed: number;
+  quantity: string;
+  quantityParsed: number;
   timestamp: number;
   side: 'buy' | 'sell';
+}
+
+// Represents a trading pair from exchangeInfo
+export interface MarketInfo {
+  symbol: string;
+  baseAsset: string;
+  quoteAsset: string;
 }
 
 interface MarketState {
   selectedMarket: string;
   orderBook: OrderBook;
   trades: Trade[];
-  markets: string[];
+  markets: MarketInfo[];       // <--- array of objects now
   updatesPaused: boolean;
   tradeCounter: number;
-  setMarket: (market: string) => void;
+  setMarket: (marketSymbol: string) => void;
   updateOrderBook: (orderBook: OrderBook) => void;
   addTrade: (trade: Omit<Trade, 'id'>) => void;
   resetData: () => void;
-  setMarkets: (markets: string[]) => void;
+  setMarkets: (markets: MarketInfo[]) => void; // updated signature
   fetchMarkets: () => void;
   setUpdatesPaused: (paused: boolean) => void;
 }
@@ -38,11 +49,12 @@ interface MarketState {
 const LOCAL_STORAGE_KEY = 'binance-markets';
 
 export const useMarketStore = create(immer<MarketState>((set) => {
-  // Initialize markets from localStorage if available, else default to an empty array.
-  let initialMarkets: string[] = [];
+  // Initialize markets from localStorage if available
+  let initialMarkets: MarketInfo[] = [];
   try {
     const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (cached) {
+      // parse an array of MarketInfo objects
       initialMarkets = JSON.parse(cached);
     }
   } catch (e) {
@@ -56,14 +68,15 @@ export const useMarketStore = create(immer<MarketState>((set) => {
     markets: initialMarkets,
     updatesPaused: false,
     tradeCounter: 0,
-    setMarket: (market: string) => {
+
+    setMarket: (marketSymbol: string) => {
       set((state) => {
-        state.selectedMarket = market;
-        // Clear old data when switching markets.
+        state.selectedMarket = marketSymbol;
         state.orderBook = { bids: [], asks: [] };
         state.trades = [];
       });
     },
+
     updateOrderBook: (orderBook: OrderBook) => {
       set((state) => {
         if (!state.updatesPaused) {
@@ -71,6 +84,7 @@ export const useMarketStore = create(immer<MarketState>((set) => {
         }
       });
     },
+
     addTrade: (trade: Omit<Trade, 'id'>) => {
       set((state) => {
         if (!state.updatesPaused) {
@@ -86,31 +100,43 @@ export const useMarketStore = create(immer<MarketState>((set) => {
         }
       });
     },
+
     resetData: () => {
       set((state) => {
         state.orderBook = { bids: [], asks: [] };
         state.trades = [];
       });
     },
-    setMarkets: (markets: string[]) => {
+
+    // Now accepts an array of MarketInfo
+    setMarkets: (markets: MarketInfo[]) => {
       set((state) => {
         state.markets = markets;
       });
     },
+
+    // Use baseAsset/quoteAsset from exchangeInfo
     fetchMarkets: () => {
       fetch('https://api.binance.com/api/v3/exchangeInfo')
         .then((res) => res.json())
         .then((data) => {
-          const symbols = data.symbols
-            .filter((s: any) => s.status === 'TRADING')
-            .map((s: any) => s.symbol);
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(symbols));
+          // data.symbols is an array of objects with symbol, baseAsset, quoteAsset, etc.
+          const filtered = data.symbols.filter((s: any) => s.status === 'TRADING');
+          const marketInfos: MarketInfo[] = filtered.map((s: any) => ({
+            symbol: s.symbol,
+            baseAsset: s.baseAsset,
+            quoteAsset: s.quoteAsset,
+          }));
+
+          // cache in localStorage
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(marketInfos));
           set((state) => {
-            state.markets = symbols;
+            state.markets = marketInfos;
           });
         })
-        .catch((err) => console.error("Failed to fetch markets:", err));
+        .catch((err) => console.error('Failed to fetch markets:', err));
     },
+
     setUpdatesPaused: (paused: boolean) => {
       set((state) => {
         state.updatesPaused = paused;

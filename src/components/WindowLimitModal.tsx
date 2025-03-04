@@ -1,30 +1,24 @@
 import React from 'react';
 
-interface WindowLimitModalProps {
-  onStopOldest: () => void;
-  onCloseCurrent: () => void;
+interface ActiveWindowModalProps {
+  onPauseMe: () => void;
+  onPauseOthers: () => void;
 }
 
-const WindowLimitModal = ({ onStopOldest, onCloseCurrent }: WindowLimitModalProps) => {
+const ActiveWindowModal: React.FC<ActiveWindowModalProps> = ({ onPauseMe, onPauseOthers }) => {
   return (
-      <div style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 2
-      }}>
-        <div style={{ background: 'white', padding: '2rem', borderRadius: '8px', textAlign: 'center' }}>
-          <h2>Window Limit Reached</h2>
-          <p>There are already active windows with websocket connections.</p>
-          <p>Please choose an option:</p>
-          <button onClick={onStopOldest} style={{ marginRight: '1rem' }}>Stop WS on Oldest Window</button>
-          <button onClick={onCloseCurrent}>Close This Window</button>
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2>Another Active Window Detected</h2>
+        <p>You can only have one active websocket connection at a time.</p>
+        <p>Please choose:</p>
+        <div className="modal-actions">
+          <button onClick={onPauseMe}>Pause This Window</button>
+          <button onClick={onPauseOthers}>Pause All Others</button>
         </div>
       </div>
+    </div>
   );
 };
 
-export default WindowLimitModal;
+export default ActiveWindowModal;

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Select } from '@mantine/core';
-import { useMarketStore } from '../store/useMarketStore';
+import { useMarketStore, MarketInfo } from '../store/useMarketStore';
 
 const MarketSelector: React.FC = () => {
   const markets = useMarketStore((state) => state.markets);
@@ -14,7 +14,11 @@ const MarketSelector: React.FC = () => {
     }
   }, [markets, fetchMarkets]);
 
-  const data = markets.map((market) => ({ value: market, label: market }));
+  // Transform MarketInfo objects into { value, label } for the Select
+  const data = markets.map((m: MarketInfo) => ({
+    value: m.symbol,
+    label: `${m.baseAsset} / ${m.quoteAsset}`, // e.g. "BTC / USDT"
+  }));
 
   return (
     <Select

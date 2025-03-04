@@ -20,7 +20,6 @@ export function getRegisteredWindows(): WindowEntry[] {
 
 export function registerWindow(id: string) {
   const windows = getRegisteredWindows();
-  // By default, new window is unpaused (active)
   windows.push({ id, timestamp: Date.now(), updatesPaused: false });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(windows));
 }

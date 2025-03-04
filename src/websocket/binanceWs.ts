@@ -12,11 +12,40 @@ const options = {
   reconnectionDelayGrowFactor: 1.5,
 };
 
-export function connectBinanceSockets(market: string) {
-  const { updatesPaused } = useMarketStore.getState();
-  // If paused, don't open websockets at all
-  if (updatesPaused) return;
+// Buffers for throttling updates (see previous example if needed)
+let orderBookBuffer:
+  | { bids: { price: string; priceParsed: number; volume: string; volumeParsed: number }[]; asks: { price: string; priceParsed: number; volume: string; volumeParsed: number }[] }
+  | null = null;
+let tradesBuffer: Array<{ 
+  price: string; 
+  priceParsed: number; 
+  quantity: string; 
+  quantityParsed: number; 
+  timestamp: number; 
+  side: 'buy' | 'sell' 
+}> = [];
 
+let updateScheduled = false;
+function scheduleUpdate() {
+  if (!updateScheduled) {
+    updateScheduled = true;
+    requestAnimationFrame(() => {
+      if (orderBookBuffer) {
+        useMarketStore.getState().updateOrderBook(orderBookBuffer);
+        orderBookBuffer = null;
+      }
+      if (tradesBuffer.length > 0) {
+        tradesBuffer.forEach((trade) => {
+          useMarketStore.getState().addTrade(trade);
+        });
+        tradesBuffer = [];
+      }
+      updateScheduled = false;
+    });
+  }
+}
+
+export function connectBinanceSockets(market: string) {
   if (orderBookSocket) orderBookSocket.close();
   if (tradesSocket) tradesSocket.close();
 
@@ -30,15 +59,20 @@ export function connectBinanceSockets(market: string) {
   orderBookSocket.onmessage = (event: MessageEvent) => {
     try {
       const data = JSON.parse(event.data);
-      const bids = data.bids.slice(0, 20).map((level: [string, string]) => ({
-        price: parseFloat(level[0]),
-        volume: parseFloat(level[1]),
+      const bids = data.bids.map((level: [string, string]) => ({
+        price: level[0],
+        priceParsed: parseFloat(level[0]),
+        volume: level[1],
+        volumeParsed: parseFloat(level[1]),
       }));
-      const asks = data.asks.slice(0, 20).map((level: [string, string]) => ({
-        price: parseFloat(level[0]),
-        volume: parseFloat(level[1]),
+      const asks = data.asks.map((level: [string, string]) => ({
+        price: level[0],
+        priceParsed: parseFloat(level[0]),
+        volume: level[1],
+        volumeParsed: parseFloat(level[1]),
       }));
-      useMarketStore.getState().updateOrderBook({ bids, asks });
+      orderBookBuffer = { bids, asks };
+      scheduleUpdate();
     } catch (err) {
       console.error("Failed to parse order book data:", err);
     }
@@ -48,12 +82,15 @@ export function connectBinanceSockets(market: string) {
     try {
       const data = JSON.parse(event.data);
       const trade: Trade = {
-        price: parseFloat(data.p),
-        quantity: parseFloat(data.q),
+        price: data.p,
+        priceParsed: parseFloat(data.p),
+        quantity: data.q,
+        quantityParsed: parseFloat(data.q),
         timestamp: data.E,
         side: data.m ? 'sell' : 'buy',
       };
-      useMarketStore.getState().addTrade(trade);
+      tradesBuffer.push(trade);
+      scheduleUpdate();
     } catch (err) {
       console.error("Failed to parse trade data:", err);
     }

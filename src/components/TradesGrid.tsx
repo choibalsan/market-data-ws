@@ -1,79 +1,51 @@
 import React, { useMemo } from 'react';
 import { useMarketStore } from '../store/useMarketStore';
 
+function formatTimeMillis(ms: number): string {
+  const date = new Date(ms);
+  const pad = (n: number, width = 2) => n.toString().padStart(width, '0');
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+  const milliseconds = pad(date.getMilliseconds(), 3);
+  return `${hours}:${minutes}:${seconds}.${milliseconds}`;
+}
+
 const TradesGrid: React.FC = () => {
   const trades = useMarketStore((state) => state.trades);
 
-  // Calculate the average trade quantity to highlight larger trades.
   const averageQuantity = useMemo(() => {
     if (trades.length === 0) return 0;
-    const total = trades.reduce((sum, trade) => sum + trade.quantity, 0);
+    const total = trades.reduce((sum, trade) => sum + trade.quantityParsed, 0);
     return total / trades.length;
   }, [trades]);
 
-  // Format a timestamp (milliseconds) as HH:MM:SS.
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-  };
-
   return (
-    <div
-      style={{
-        height: '100%',
-        overflowY: 'auto',
-        fontFamily: 'monospace',
-        fontSize: '0.9rem',
-      }}
-    >
-      {/* Friendly title */}
-      <h2 style={{ textAlign: 'center', margin: '0.5rem 0' }}>Recent Trades</h2>
+    <div className="trades-container">
+      <h2 className="trades-title">Recent Trades</h2>
       {trades.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '1rem', color: '#888' }}>
-          Waiting for trades...
-        </div>
+        <div className="placeholder">Waiting for trades...</div>
       ) : (
         <>
-          {/* Column Headers */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              fontWeight: 'bold',
-              padding: '4px 8px',
-              borderBottom: '2px solid #ccc',
-            }}
-          >
-            <div style={{ width: '20%' }}>Time</div>
-            <div style={{ width: '20%', textAlign: 'right' }}>Price</div>
-            <div style={{ width: '20%', textAlign: 'right' }}>Amount</div>
-            <div style={{ width: '20%', textAlign: 'center' }}>Direction</div>
+          <div className="trades-header">
+            <div className="trade-col time-col">Time</div>
+            <div className="trade-col price-col">Price</div>
+            <div className="trade-col amount-col">Amount</div>
+            <div className="trade-col direction-col">Direction</div>
           </div>
           {trades.map((trade) => {
-            const timeStr = formatTime(trade.timestamp);
-            const isLarge = averageQuantity > 0 && trade.quantity > 1.5 * averageQuantity;
+            const timeStr = formatTimeMillis(trade.timestamp);
+            const isLarge = averageQuantity > 0 && trade.quantityParsed > 1.5 * averageQuantity;
             const color = trade.side === 'buy' ? 'green' : 'red';
-            const directionArrow = trade.side === 'buy' ? '↑' : '↓';
+            const arrow = trade.side === 'buy' ? '↑' : '↓';
 
             return (
-              <div
-                key={trade.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '4px 8px',
-                  borderBottom: '1px solid #eee',
-                  backgroundColor: isLarge ? 'rgba(255, 255, 0, 0.3)' : 'transparent',
-                  color: color,
-                }}
-              >
-                <div style={{ width: '20%' }}>{timeStr}</div>
-                <div style={{ width: '20%', textAlign: 'right' }}>{trade.price.toFixed(4)}</div>
-                <div style={{ width: '20%', textAlign: 'right' }}>{trade.quantity.toFixed(2)}</div>
-                <div style={{ width: '20%', textAlign: 'center' }}>{directionArrow}</div>
+              <div key={trade.id} className={`trade-row ${isLarge ? 'large-trade' : ''}`} style={{ color }}>
+                <div className="trade-col time-col">{timeStr}</div>
+                {/* Show original string values */}
+                <div className="trade-col price-col">{trade.price}</div>
+                <div className="trade-col amount-col">{trade.quantity}</div>
+                <div className="trade-col direction-col">{arrow}</div>
               </div>
             );
           })}
