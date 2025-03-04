@@ -1,7 +1,7 @@
 export interface WindowEntry {
   id: string;
   timestamp: number;
-  wsActive: boolean;
+  updatesPaused: boolean;
 }
 
 const STORAGE_KEY = 'binance-app-windows';
@@ -20,7 +20,8 @@ export function getRegisteredWindows(): WindowEntry[] {
 
 export function registerWindow(id: string) {
   const windows = getRegisteredWindows();
-  windows.push({ id, timestamp: Date.now(), wsActive: true });
+  // By default, new window is unpaused (active)
+  windows.push({ id, timestamp: Date.now(), updatesPaused: false });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(windows));
 }
 
@@ -29,11 +30,11 @@ export function unregisterWindow(id: string) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(windows));
 }
 
-export function updateWindowEntry(id: string, entry: Partial<WindowEntry>) {
+export function updateWindowEntry(id: string, partial: Partial<WindowEntry>) {
   const windows = getRegisteredWindows();
   const index = windows.findIndex((w) => w.id === id);
   if (index !== -1) {
-    windows[index] = { ...windows[index], ...entry };
+    windows[index] = { ...windows[index], ...partial };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(windows));
   }
 }

@@ -14,11 +14,11 @@ const WindowLimitModal = ({ onStopOldest, onCloseCurrent }: WindowLimitModalProp
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1000
+        zIndex: 2
       }}>
         <div style={{ background: 'white', padding: '2rem', borderRadius: '8px', textAlign: 'center' }}>
           <h2>Window Limit Reached</h2>
-          <p>There are already 2 active windows with websocket connections.</p>
+          <p>There are already active windows with websocket connections.</p>
           <p>Please choose an option:</p>
           <button onClick={onStopOldest} style={{ marginRight: '1rem' }}>Stop WS on Oldest Window</button>
           <button onClick={onCloseCurrent}>Close This Window</button>
