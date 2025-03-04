@@ -1,4 +1,4 @@
-/* Global Resets and Base Styles */
+/* resets */
 body, html, #root {
     margin: 0;
     padding: 0;
@@ -12,7 +12,7 @@ body, html, #root {
     height: 100vh;
   }
   
-  /* Top */
+  /* Top Panel */
   .top-panel {
     display: flex;
     align-items: center;
@@ -29,12 +29,13 @@ body, html, #root {
     cursor: pointer;
   }
   
-  /* Main layout */
+  /* Main  layout */
   .main-content {
     display: flex;
     flex: 1;
     overflow: hidden;
   }
+  
   .orderbook-section,
   .trades-section {
     flex: 1;
@@ -98,10 +99,8 @@ body, html, #root {
     font-weight: bold;
   }
   
-  /* Trades Styles */
+  /* Trades */
   .trades-container {
-    height: 100%;
-    overflow-y: auto;
     font-family: monospace;
     font-size: 0.9rem;
   }
@@ -140,7 +139,7 @@ body, html, #root {
     text-align: center;
   }
   
-  /* Modal */
+  /* Modal Styles */
   .modal-overlay {
     position: fixed;
     top: 0;
@@ -168,5 +167,41 @@ body, html, #root {
   .modal-actions button {
     padding: 0.5rem 1rem;
     cursor: pointer;
+  }
+  
+  /* Mobile Styles */
+  @media (max-width: 768px) {
+  
+    .top-panel {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+    }
+  
+    /* Single scroll for entire page on mobile */
+    .main-content {
+      flex-direction: column;
+      overflow: visible;
+    }
+  
+    .orderbook-section,
+    .trades-section {
+      overflow-y: visible;
+      border-right: none;
+    }
+  
+    .orderbook-container {
+      flex-direction: column;
+    }
+    .spread-container {
+      margin: 1rem 0;
+      width: auto;
+      align-self: flex-start;
+    }
+  
+    /* Hide the last column in trades on mobile */
+    .trade-row > div:last-child {
+      display: none;
+    }
   }
   
